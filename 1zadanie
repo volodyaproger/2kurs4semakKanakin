@@ -1,0 +1,27 @@
+import re
+
+class MathModel:
+    def calculate(self, equation):
+        try:
+            equation = equation.replace('//', '/')
+            result = eval(equation)
+            return result
+        except Exception as e:
+            return str(e)
+
+class MathView:
+    def display_result(self, result):
+        print(f"Результат: {result}")
+
+class MathController:
+    def __init__(self):
+        self.model = MathModel()
+        self.view = MathView()
+
+    def process_equation(self, equation):
+        result = self.model.calculate(equation)
+        self.view.display_result(result)
+
+controller = MathController()
+equation = "-3234+843/3234-4232123/(34+123+32+5)*3234"
+controller.process_equation(equation)
