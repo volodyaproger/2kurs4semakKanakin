@@ -1,0 +1,52 @@
+from reportlab.pdfgen import canvas
+from io import BytesIO
+
+def cec_required(view_func):
+    return user_passes_test(lambda u: u.role == 'CEC', login_url='login')(view_func)
+
+@cec_required
+def cec_dashboard(request):
+    // Создание голосования
+    if 'create_voting' in request.POST:
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        end_date = request.POST.get('end_date')
+        // Создание голосования
+        pass
+    
+    // Добавление кандидатов
+    if 'add_candidate' in request.POST:
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        # Создание кандидата
+        pass
+    
+    // Печать результатов (PDF)
+    if 'generate_pdf' in request.POST:
+        voting_id = request.POST.get('voting_id')
+        buffer = BytesIO()
+        p = canvas.Canvas(buffer)
+        
+        // Генерация PDF
+        voting = Voting.objects.get(id=voting_id)
+        p.drawString(100, 800, f"Результаты голосования: {voting.title}")
+        
+        candidates = voting.candidates.all()
+        y_position = 780
+        for candidate in candidates:
+            votes_count = candidate.votes_received.count()
+            p.drawString(100, y_position, f"{candidate.user}: {votes_count} голосов")
+            y_position -= 20
+        
+        p.showPage()
+        p.save()
+        
+        buffer.seek(0)
+        return FileResponse(buffer, as_attachment=True, filename=f'results_{voting.title}.pdf')
+    
+    // Выбор группировки и 5. Сортировка результатов
+    votings = Voting.objects.filter(created_by=request.user)
+    
+    return render(request, 'cec_dashboard.html', {
+        'votings': votings,
+    })
