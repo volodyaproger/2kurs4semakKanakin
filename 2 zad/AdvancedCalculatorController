@@ -1,0 +1,30 @@
+public class AdvancedCalculatorController {
+    private AdvancedCalculatorModel model;
+    private AdvancedCalculatorView view;
+    
+    public AdvancedCalculatorController(AdvancedCalculatorModel model, AdvancedCalculatorView view) {
+        this.model = model;
+        this.view = view;
+    }
+    
+    public void process() {
+        while (true) {
+            String expression = view.getExpression();
+            
+            if (expression.equalsIgnoreCase("exit")) {
+                break;
+            }
+            
+            try {
+                double result = model.calculate(expression);
+                view.displayResult(result);
+            } catch (IllegalArgumentException e) {
+                view.displayError(e.getMessage());
+            } catch (ArithmeticException e) {
+                view.displayError(e.getMessage());
+            }
+        }
+        
+        view.close();
+    }
+}
