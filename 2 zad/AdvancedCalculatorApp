@@ -1,0 +1,9 @@
+public class AdvancedCalculatorApp {
+    public static void main(String[] args) {
+        AdvancedCalculatorModel model = new AdvancedCalculatorModel();
+        AdvancedCalculatorView view = new AdvancedCalculatorView();
+        AdvancedCalculatorController controller = new AdvancedCalculatorController(model, view);
+        
+        controller.process();
+    }
+}
