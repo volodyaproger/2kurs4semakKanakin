@@ -1,0 +1,25 @@
+def candidate_required(view_func):
+    return user_passes_test(lambda u: u.role == 'CANDIDATE', login_url='login')(view_func)
+
+@candidate_required
+def candidate_dashboard(request):
+    // Заполнение данных о себе
+    if 'update_info' in request.POST:
+        bio = request.POST.get('bio')
+        program = request.POST.get('program')
+        info, created = CandidateInfo.objects.get_or_create(user=request.user)
+        info.bio = bio
+        info.program = program
+        info.save()
+    
+    // Результаты предыдущего голосования
+    previous_votes = Candidate.objects.filter(user=request.user).order_by('-voting__end_date')
+    
+    // Все голосования, в которых принимал участие
+    all_participated = Candidate.objects.filter(user=request.user)
+    
+    return render(request, 'candidate_dashboard.html', {
+        'candidate_info': getattr(request.user, 'candidate_info', None),
+        'previous_votes': previous_votes,
+        'all_participated': all_participated,
+    })
