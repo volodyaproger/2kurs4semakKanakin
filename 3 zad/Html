@@ -1,0 +1,11 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('admin/', views.admin_dashboard, name='admin_dashboard'),
+    path('cec/', views.cec_dashboard, name='cec_dashboard'),
+    path('candidate/', views.candidate_dashboard, name='candidate_dashboard'),
+    path('voter/', views.voter_dashboard, name='voter_dashboard'),
+    path('export/', views.export_results, name='export_results'),
+    // Другие необходимые маршруты
+]
