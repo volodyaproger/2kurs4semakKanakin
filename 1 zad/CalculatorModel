@@ -1,0 +1,149 @@
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Stack;
+
+public class CalculatorModel {
+    public double calculate(String expression) throws IllegalArgumentException {
+        if (expression == null || expression.trim().isEmpty()) {
+            throw new IllegalArgumentException("Expression cannot be empty");
+        }
+        
+        if (!expression.matches("^-?\\d.*\\d$")) {
+            throw new IllegalArgumentException("Expression must start and end with a number");
+        }
+        
+        long operatorCount = expression.chars().filter(ch -> "+-*/^".indexOf(ch) != -1).count();
+        if (operatorCount >= 100) {
+            throw new IllegalArgumentException("Expression cannot have more than 100 terms");
+        }
+        
+        expression = expression.replace("//", "/"); // Для целочисленного деления
+        
+        try {
+            List<String> rpn = infixToRPN(expression);
+            return evaluateRPN(rpn);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid expression: " + e.getMessage());
+        }
+    }
+    
+    private List<String> infixToRPN(String expression) {
+        List<String> output = new ArrayList<>();
+        Stack<Character> operators = new Stack<>();
+        
+        StringBuilder numberBuffer = new StringBuilder();
+        
+        for (int i = 0; i < expression.length(); i++) {
+            char c = expression.charAt(i);
+            
+            if (Character.isDigit(c) || c == '.') {
+                numberBuffer.append(c);
+            } else if (c == '-' && (i == 0 || "+-*/^(".indexOf(expression.charAt(i-1)) != -1)) {
+                numberBuffer.append(c);
+            } else if ("+-*/^".indexOf(c) != -1) {
+                if (numberBuffer.length() > 0) {
+                    output.add(numberBuffer.toString());
+                    numberBuffer.setLength(0);
+                }
+                
+                while (!operators.isEmpty() && precedence(operators.peek()) >= precedence(c)) {
+                    output.add(operators.pop().toString());
+                }
+                operators.push(c);
+            } else if (c == '(') {
+                if (numberBuffer.length() > 0) {
+                    output.add(numberBuffer.toString());
+                    numberBuffer.setLength(0);
+                }
+                operators.push(c);
+            } else if (c == ')') {
+                if (numberBuffer.length() > 0) {
+                    output.add(numberBuffer.toString());
+                    numberBuffer.setLength(0);
+                }
+                
+                while (!operators.isEmpty() && operators.peek() != '(') {
+                    output.add(operators.pop().toString());
+                }
+                
+                if (!operators.isEmpty() && operators.peek() == '(') {
+                    operators.pop();
+                } else {
+                    throw new IllegalArgumentException("Mismatched parentheses");
+                }
+            }
+        }
+        
+        if (numberBuffer.length() > 0) {
+            output.add(numberBuffer.toString());
+        }
+        
+        while (!operators.isEmpty()) {
+            if (operators.peek() == '(') {
+                throw new IllegalArgumentException("Mismatched parentheses");
+            }
+            output.add(operators.pop().toString());
+        }
+        
+        return output;
+    }
+    
+    private double evaluateRPN(List<String> rpn) {
+Stack<Double> stack = new Stack<>();
+        
+        for (String token : rpn) {
+            if (token.matches("-?\\d+(\\.\\d+)?")) {
+                stack.push(Double.parseDouble(token));
+            } else {
+                if (stack.size() < 2) {
+                    throw new IllegalArgumentException("Invalid expression");
+                }
+                
+                double b = stack.pop();
+                double a = stack.pop();
+                
+                switch (token) {
+                    case "+":
+                        stack.push(a + b);
+                        break;
+                    case "-":
+                        stack.push(a - b);
+                        break;
+                    case "*":
+                        stack.push(a * b);
+                        break;
+                    case "/":
+                        if (b == 0) throw new ArithmeticException("Division by zero");
+                        stack.push(a / b);
+                        break;
+                    case "^":
+                        stack.push(Math.pow(a, b));
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Unknown operator: " + token);
+                }
+            }
+        }
+        
+        if (stack.size() != 1) {
+            throw new IllegalArgumentException("Invalid expression");
+        }
+        
+        return stack.pop();
+    }
+    
+    private int precedence(char operator) {
+        switch (operator) {
+            case '^':
+                return 4;
+            case '*':
+            case '/':
+                return 3;
+            case '+':
+            case '-':
+                return 2;
+            default:
+                return 0;
+        }
+    }
+}
