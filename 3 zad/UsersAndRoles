@@ -1,0 +1,67 @@
+from django.db import models
+from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
+
+class User(AbstractUser):
+    ROLES = (
+        ('ADMIN', 'Администратор'),
+        ('CEC', 'ЦИК'),
+        ('CANDIDATE', 'Кандидат'),
+        ('VOTER', 'Избиратель'),
+    )
+    
+    role = models.CharField(max_length=10, choices=ROLES, default='VOTER')
+    birth_date = models.DateField(null=True, blank=True)
+    snils = models.CharField(max_length=14, unique=True, null=True, blank=True)
+    middle_name = models.CharField(max_length=100, blank=True)
+    
+    def str(self):
+        return f"{self.last_name} {self.first_name} {self.middle_name}"
+
+class CandidateInfo(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='candidate_info')
+    bio = models.TextField(blank=True)
+    program = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def str(self):
+        return f"Информация о кандидате: {self.user}"
+
+class Voting(models.Model):
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    start_date = models.DateTimeField(auto_now_add=True)
+    end_date = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_votings')
+    
+    def save(self, *args, **kwargs):
+        if timezone.now() > self.end_date:
+            self.is_active = False
+        super().save(*args, **kwargs)
+    
+    def str(self):
+        return self.title
+
+class Candidate(models.Model):
+    voting = models.ForeignKey(Voting, on_delete=models.CASCADE, related_name='candidates')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='candidate_in')
+    registered_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('voting', 'user')
+    
+    def str(self):
+        return f"{self.user} в {self.voting}"
+
+class Vote(models.Model):
+    voting = models.ForeignKey(Voting, on_delete=models.CASCADE, related_name='votes')
+    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE, related_name='votes_received')
+    voter = models.ForeignKey(User, on_delete=models.CASCADE, related_name='votes_made')
+    voted_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('voting', 'voter')
+    
+    def str(self):
+        return f"Голос {self.voter} за {self.candidate} в {self.voting}"
