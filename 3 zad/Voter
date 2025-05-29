@@ -1,0 +1,31 @@
+def voter_required(view_func):
+    return user_passes_test(lambda u: u.role == 'VOTER', login_url='login')(view_func)
+
+@voter_required
+def voter_dashboard(request):
+    // Регистрация (уже выполнена при создании пользователя)
+    
+    // Голосование
+    active_votings = Voting.objects.filter(is_active=True)
+    
+    if 'vote' in request.POST:
+        voting_id = request.POST.get('voting_id')
+        candidate_id = request.POST.get('candidate_id')
+        // Запись голоса
+        pass
+    
+    // Просмотр списка кандидатов
+    candidates_in_voting = {}
+    for voting in active_votings:
+        candidates_in_voting[voting.id] = voting.candidates.all()
+    
+    // Все голосования, в которых голосовал/не голосовал
+    all_votings = Voting.objects.all()
+    voted_votings = Vote.objects.filter(voter=request.user).values_list('voting', flat=True)
+    
+    return render(request, 'voter_dashboard.html', {
+        'active_votings': active_votings,
+        'candidates_in_voting': candidates_in_voting,
+        'all_votings': all_votings,
+        'voted_votings': voted_votings,
+    })
