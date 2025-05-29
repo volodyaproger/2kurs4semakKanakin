@@ -1,0 +1,38 @@
+public class Main {
+    public static void main(String[] args) {
+        // Создаем коннектор к БД
+        DatabaseConnector dbConnector = new JdbcDatabaseConnector();
+        
+        // Создаем API
+        DataStorageAPI api = new DataStorageAPIImpl(dbConnector);
+        
+        // Сохраняем read-only данные
+        api.saveData("config", loadConfiguration(), true);
+        
+        // Сохраняем изменяемые данные
+        api.saveData("report", generateReport(), false);
+        
+        // Загружаем данные (read-only будут из кэша)
+        DataResult config = api.loadData("config");
+        DataResult report = api.loadData("report");
+        
+        // Настраиваем периодическое обновление
+        api.scheduleDataRefresh("report", 1, TimeUnit.HOURS);
+        
+        // Выгружаем данные
+        DataResult export = api.exportData("report");
+        
+        // Завершаем работу
+        ((DataStorageAPIImpl) api).shutdown();
+    }
+    
+    private static Object loadConfiguration() {
+        // Загрузка конфигурации
+        return new Object();
+    }
+    
+    private static Object generateReport() {
+        // Генерация отчета
+        return new Object();
+    }
+}
