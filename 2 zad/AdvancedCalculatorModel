@@ -1,0 +1,221 @@
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Stack;
+
+public class AdvancedCalculatorModel {
+    public double calculate(String expression) throws IllegalArgumentException {
+        if (expression == null || expression.trim().isEmpty()) {
+            throw new IllegalArgumentException("Expression cannot be empty");
+        }
+        
+        if (!expression.matches("^([-+]?\\d|\\(|exp\\(|log\\().*([0-9]|\\))$")) {
+            throw new IllegalArgumentException("Expression must start and end with a number, function or parenthesis");
+        }
+        
+        if (!checkParentheses(expression)) {
+            throw new IllegalArgumentException("Mismatched parentheses in expression");
+        }
+        
+        long operatorCount = expression.chars().filter(ch -> "+-*/^!".indexOf(ch) != -1).count();
+        if (operatorCount >= 15) {
+            throw new IllegalArgumentException("Expression cannot have more than 15 terms");
+        }
+        
+        expression = expression.replace("**", "^").replace("Λ", "^");
+        
+        try {
+            List<String> rpn = infixToRPN(expression);
+            return evaluateRPN(rpn);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid expression: " + e.getMessage());
+        }
+    }
+    
+    private boolean checkParentheses(String expression) {
+        int balance = 0;
+        for (char c : expression.toCharArray()) {
+            if (c == '(') balance++;
+            if (c == ')') balance--;
+            if (balance < 0) return false;
+        }
+        return balance == 0;
+    }
+    
+    private List<String> infixToRPN(String expression) {
+        List<String> output = new ArrayList<>();
+        Stack<String> operators = new Stack<>();
+        
+        StringBuilder buffer = new StringBuilder();
+        
+        for (int i = 0; i < expression.length(); i++) {
+            char c = expression.charAt(i);
+            
+            if (Character.isDigit(c) || c == '.') {
+                buffer.append(c);
+            } else if (c == '-' && (i == 0 || "+-*/^(!".indexOf(expression.charAt(i-1)) != -1)) {
+                buffer.append(c);
+            } else if ("+-*/^!".indexOf(c) != -1) {
+                if (buffer.length() > 0) {
+                    output.add(buffer.toString());
+                    buffer.setLength(0);
+                }
+                
+                while (!operators.isEmpty() && 
+                       precedence(operators.peek()) >= precedence(String.valueOf(c)) &&
+                       !operators.peek().equals("(")) {
+                    output.add(operators.pop());
+                }
+                operators.push(String.valueOf(c));
+            } else if (c == '(') {
+                if (buffer.length() > 0) {
+                    output.add(buffer.toString());
+                    buffer.setLength(0);
+                }
+                operators.push(String.valueOf(c));
+            } else if (c == ')') {
+                if (buffer.length() > 0) {
+                    output.add(buffer.toString());
+                    buffer.setLength(0);
+                }
+                
+                while (!operators.isEmpty() && !operators.peek().equals("(")) {
+                    output.add(operators.pop());
+                }
+                
+                if (!operators.isEmpty() && operators.peek().equals("(")) {
+                    operators.pop();
+} else {
+                    throw new IllegalArgumentException("Mismatched parentheses");
+                }
+                
+                if (!operators.isEmpty() && isFunction(operators.peek())) {
+                    output.add(operators.pop());
+                }
+            } else if (Character.isLetter(c)) {
+                buffer.append(c);
+                if (buffer.toString().equals("exp") || buffer.toString().equals("log")) {
+                    operators.push(buffer.toString());
+                    buffer.setLength(0);
+                    i++;
+                }
+            }
+        }
+        
+        if (buffer.length() > 0) {
+            output.add(buffer.toString());
+        }
+        
+        while (!operators.isEmpty()) {
+            if (operators.peek().equals("(")) {
+                throw new IllegalArgumentException("Mismatched parentheses");
+            }
+            output.add(operators.pop());
+        }
+        
+        return output;
+    }
+    
+    private double evaluateRPN(List<String> rpn) {
+        Stack<Double> stack = new Stack<>();
+        
+        for (String token : rpn) {
+            if (token.matches("-?\\d+(\\.\\d+)?")) {
+                stack.push(Double.parseDouble(token));
+            } else if (isFunction(token)) {
+                if (stack.isEmpty()) {
+                    throw new IllegalArgumentException("Not enough operands for function");
+                }
+                double a = stack.pop();
+                switch (token) {
+                    case "exp":
+                        stack.push(Math.exp(a));
+                        break;
+                    case "log":
+                        if (a <= 0) throw new ArithmeticException("Logarithm of non-positive number");
+                        stack.push(Math.log(a) / Math.log(2));
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Unknown function: " + token);
+                }
+            } else {
+                if (token.equals("!")) {
+                    if (stack.isEmpty()) {
+                        throw new IllegalArgumentException("Not enough operands for factorial");
+                    }
+                    double a = stack.pop();
+                    if (a < 0 || a != (int)a) {
+                        throw new ArithmeticException("Factorial of negative or non-integer number");
+                    }
+                    stack.push(factorial((int)a));
+                } else {
+                    if (stack.size() < 2) {
+                        throw new IllegalArgumentException("Not enough operands for operator");
+                    }
+                    
+                    double b = stack.pop();
+                    double a = stack.pop();
+                    
+                    switch (token) {
+                        case "+":
+                            stack.push(a + b);
+                            break;
+                        case "-":
+                            stack.push(a - b);
+                            break;
+                        case "*":
+                            stack.push(a * b);
+                            break;
+                        case "/":
+                            if (b == 0) throw new ArithmeticException("Division by zero");
+                            stack.push(a / b);
+                            break;
+                        case "^":
+                            stack.push(Math.pow(a, b));
+                            break;
+                        default:
+                            throw new IllegalArgumentException("Unknown operator: " + token);
+                    }
+                    }
+            }
+        }
+        
+        if (stack.size() != 1) {
+            throw new IllegalArgumentException("Invalid expression");
+        }
+        
+        return stack.pop();
+    }
+    
+    private boolean isFunction(String token) {
+        return token.equals("exp") || token.equals("log");
+    }
+    
+    private int precedence(String operator) {
+        switch (operator) {
+            case "^":
+                return 5;
+            case "!":
+                return 4;
+            case "exp":
+            case "log":
+                return 4;
+            case "*":
+            case "/":
+                return 3;
+            case "+":
+            case "-":
+                return 2;
+            default:
+                return 0;
+        }
+    }
+    
+    private double factorial(int n) {
+        if (n == 0) return 1;
+        double result = 1;
+        for (int i = 1; i <= n; i++) {
+            result *= i;
+        }
+        return result;
+    }
+}
