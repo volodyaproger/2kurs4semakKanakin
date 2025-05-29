@@ -1,0 +1,52 @@
+import zipfile
+from django.http import HttpResponse
+
+def export_results(request, voting_ids, single_file=True):
+    if single_file:
+        // Выгрузка одним файлом
+        buffer = BytesIO()
+        p = canvas.Canvas(buffer)
+        
+        y_position = 800
+        for voting_id in voting_ids:
+            voting = Voting.objects.get(id=voting_id)
+            p.drawString(100, y_position, f"Результаты голосования: {voting.title}")
+            y_position -= 20
+            
+            candidates = voting.candidates.all()
+            for candidate in candidates:
+                votes_count = candidate.votes_received.count()
+                p.drawString(100, y_position, f"{candidate.user}: {votes_count} голосов")
+                y_position -= 20
+            
+            y_position -= 20
+        
+        p.showPage()
+        p.save()
+        buffer.seek(0)
+        return FileResponse(buffer, as_attachment=True, filename='combined_results.pdf')
+    else:
+        // Выгрузка несколькими файлами в ZIP
+        buffer = BytesIO()
+        with zipfile.ZipFile(buffer, 'w') as zip_file:
+            for voting_id in voting_ids:
+                voting = Voting.objects.get(id=voting_id)
+                file_buffer = BytesIO()
+                p = canvas.Canvas(file_buffer)
+                
+                p.drawString(100, 800, f"Результаты голосования: {voting.title}")
+                
+                candidates = voting.candidates.all()
+                y_position = 780
+                for candidate in candidates:
+                    votes_count = candidate.votes_received.count()
+                    p.drawString(100, y_position, f"{candidate.user}: {votes_count} голосов")
+                    y_position -= 20
+                
+                p.showPage()
+                p.save()
+                file_buffer.seek(0)
+                zip_file.writestr(f'results_{voting.title}.pdf', file_buffer.getvalue())
+        
+        buffer.seek(0)
+        return FileResponse(buffer, as_attachment=True, filename='voting_results.zip')
