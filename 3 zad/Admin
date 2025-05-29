@@ -1,0 +1,32 @@
+from django.contrib.auth.decorators import user_passes_test
+
+def admin_required(view_func):
+    return user_passes_test(lambda u: u.role == 'ADMIN', login_url='login')(view_func)
+
+@admin_required
+def admin_dashboard(request):
+    // Просмотр списка пользователей и удаление
+    users = User.objects.all()
+    
+    // Просмотр и удаление ЦИК
+    cec_users = User.objects.filter(role='CEC')
+    
+    // Просмотр и удаление кандидатов
+    candidates = User.objects.filter(role='CANDIDATE')
+    
+    if request.method == 'POST':
+        // Обработка удаления пользователей, ЦИК или кандидатов
+        pass
+    
+    // Создание ЦИК - логин: пароль
+    if 'create_cec' in request.POST:
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        // Создание пользователя ЦИК
+        pass
+    
+    return render(request, 'admin_dashboard.html', {
+        'users': users,
+        'cec_users': cec_users,
+        'candidates': candidates,
+    })
