@@ -1,0 +1,183 @@
+import java.util.*;
+import java.util.concurrent.*;
+
+// Интерфейс для основного API
+public interface DataStorageAPI {
+    // Загрузка данных
+    DataResult loadData(String dataId);
+    
+    // Сохранение данных
+    void saveData(String dataId, Object data, boolean isReadOnly);
+    
+    // Выгрузка результатов
+    DataResult exportData(String dataId);
+    
+    // Обновление данных по таймеру
+    void scheduleDataRefresh(String dataId, long interval, TimeUnit timeUnit);
+}
+
+// Реализация API
+public class DataStorageAPIImpl implements DataStorageAPI {
+    private final DatabaseConnector dbConnector;
+    private final CacheManager cacheManager;
+    private final ScheduledExecutorService scheduler;
+    
+    public DataStorageAPIImpl(DatabaseConnector dbConnector) {
+        this.dbConnector = dbConnector;
+        this.cacheManager = new CacheManager();
+        this.scheduler = Executors.newSingleThreadScheduledExecutor();
+    }
+    
+    @Override
+    public DataResult loadData(String dataId) {
+        // Проверяем, есть ли данные в кэше
+        if (cacheManager.contains(dataId)) {
+            return cacheManager.get(dataId);
+        }
+        
+        // Если нет в кэше, загружаем из БД
+        DataResult result = dbConnector.fetchData(dataId);
+        
+        // Если данные read-only, кэшируем их
+        if (result != null && result.isReadOnly()) {
+            cacheManager.put(dataId, result);
+        }
+        
+        return result;
+    }
+    
+    @Override
+    public void saveData(String dataId, Object data, boolean isReadOnly) {
+        // Сохраняем в БД
+        dbConnector.storeData(dataId, data, isReadOnly);
+        
+        // Если данные read-only, обновляем кэш
+        if (isReadOnly) {
+            DataResult result = new DataResult(dataId, data, true);
+            cacheManager.put(dataId, result);
+        } else {
+            // Если данные изменяемые, удаляем из кэша (если они там были)
+            cacheManager.invalidate(dataId);
+        }
+    }
+    
+    @Override
+    public DataResult exportData(String dataId) {
+        // Для экспорта всегда получаем актуальные данные
+        DataResult result = dbConnector.fetchData(dataId);
+        
+        // Если данные read-only, обновляем кэш
+        if (result != null && result.isReadOnly()) {
+            cacheManager.put(dataId, result);
+        }
+        
+        return result;
+    }
+    
+    @Override
+    public void scheduleDataRefresh(String dataId, long interval, TimeUnit timeUnit) {
+        scheduler.scheduleAtFixedRate(() -> {
+            // Обновляем данные в БД
+            dbConnector.refreshData(dataId);
+            
+            // Если данные в кэше, обновляем их
+            if (cacheManager.contains(dataId)) {
+                DataResult freshData = dbConnector.fetchData(dataId);
+                if (freshData != null && freshData.isReadOnly()) {
+                    cacheManager.put(dataId, freshData);
+                }
+            }
+        }, interval, interval, timeUnit);
+    }
+    
+    public void shutdown() {
+        scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+}
+
+// Класс для управления кэшем
+class CacheManager {
+    private final Map<String, DataResult> cache = new ConcurrentHashMap<>();
+    
+    public boolean contains(String dataId) {
+        return cache.containsKey(dataId);
+    }
+    
+    public DataResult get(String dataId) {
+        return cache.get(dataId);
+    }
+    
+    public void put(String dataId, DataResult data) {
+        cache.put(dataId, data);
+    }
+    
+    public void invalidate(String dataId) {
+        cache.remove(dataId);
+    }
+    
+    public void clear() {
+        cache.clear();
+    }
+}
+// Класс результата
+class DataResult {
+    private final String dataId;
+    private final Object data;
+    private final boolean readOnly;
+    
+    public DataResult(String dataId, Object data, boolean readOnly) {
+        this.dataId = dataId;
+        this.data = data;
+        this.readOnly = readOnly;
+    }
+    
+    public String getDataId() {
+        return dataId;
+    }
+    
+    public Object getData() {
+        return data;
+    }
+    
+    public boolean isReadOnly() {
+        return readOnly;
+    }
+}
+
+// Интерфейс для работы с БД
+interface DatabaseConnector {
+    DataResult fetchData(String dataId);
+    void storeData(String dataId, Object data, boolean isReadOnly);
+    void refreshData(String dataId);
+}
+
+// Пример реализации DatabaseConnector
+class JdbcDatabaseConnector implements DatabaseConnector {
+    @Override
+    public DataResult fetchData(String dataId) {
+        // Реализация запроса к БД
+        // Здесь должен быть JDBC/SQL код для получения данных
+        // Возвращаем null для примера
+        return null;
+    }
+    
+    @Override
+    public void storeData(String dataId, Object data, boolean isReadOnly) {
+        // Реализация сохранения в БД
+        // Здесь должен быть JDBC/SQL код для сохранения данных
+    }
+    
+    @Override
+    public void refreshData(String dataId) {
+        // Реализация обновления данных в БД
+        // Здесь должен быть JDBC/SQL код для обновления данных
+    }
+}
